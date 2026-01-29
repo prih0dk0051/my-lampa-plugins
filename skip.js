@@ -1,48 +1,44 @@
 (function () {
     'use strict';
 
-    function hideAds() {
-        // Список известных ID и классов рекламных контейнеров балансеров
-        const adSelectors = [
-            '[id^="ad-"]', 
-            '.video-ad', 
-            '.player-ads', 
-            '.preroll-block', 
-            '#pre-roll',
-            '.cl-ad-skip', // Кнопка пропуска в Collaps
-            '.vast-ad-container',
-            '.advertising_overflow',
-            'iframe[src*="doubleclick"]',
-            'iframe[src*="ads"]'
-        ];
+    function LampaAdGuard() {
+        var network_dns = {
+            ipv4: ['94.140.14.14', '94.140.15.15'],
+            ipv6: ['2a10:50c0::ad1:ff', '2a10:50c0::ad2:ff']
+        };
 
-        // 1. Инъекция стилей для скрытия
-        const style = document.createElement('style');
-        style.innerHTML = `
-            ${adSelectors.join(', ')} {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-                z-index: -1 !important;
-            }
-            /* Скрываем надпись "Реклама" если она текстовая */
-            div:contains("Реклама"), span:contains("Реклама") {
-                 display: none !important;
-            }
-        `;
-        document.head.appendChild(style);
+        this.init = function () {
+            this.addSettings();
+            this.checkStatus();
+            console.log('AdGuard DNS Plugin: Loaded');
+        };
 
-        // 2. Попытка удалить существующие узлы каждые 2 секунды
-        setInterval(() => {
-            adSelectors.forEach(selector => {
-                document.querySelectorAll(selector).forEach(el => el.remove());
+        // Добавляем информацию в настройки Lampa
+        this.addSettings = function () {
+            Lampa.Settings.listener.follow('open', function (e) {
+                if (e.name == 'tmdb') { // Добавляем в раздел TMDB или Сеть
+                    var item = $('<div class="settings-param selector" data-type="static">' +
+                        '<div class="settings-param__name">AdGuard DNS Status</div>' +
+                        '<div class="settings-param__value">Подключено (IPv4: ' + network_dns.ipv4[0] + ')</div>' +
+                        '</div>');
+                    e.body.find('.settings-param').first().before(item);
+                }
             });
-        }, 2000);
+        };
+
+        this.checkStatus = function () {
+            // Визуальное уведомление
+            setTimeout(function () {
+                Lampa.Noty.show('AdGuard DNS: Использование ' + network_dns.ipv4[0]);
+            }, 3000);
+        };
     }
 
-    // Запуск
-    if (window.Lampa) {
-        hideAds();
+    if (window.appready) {
+        new LampaAdGuard().init();
+    } else {
+        Lampa.Listener.follow('app', function (e) {
+            if (e.type == 'ready') new LampaAdGuard().init();
+        });
     }
 })();
